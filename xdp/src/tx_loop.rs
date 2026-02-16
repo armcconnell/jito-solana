@@ -36,6 +36,7 @@ pub fn tx_loop<T: AsRef<[u8]>, A: AsRef<[SocketAddr]>>(
     src_ip: Option<Ipv4Addr>,
     src_port: u16,
     dest_mac: Option<MacAddress>,
+    multicast_ttl: u8,
     receiver: Receiver<(A, T)>,
     drop_sender: Sender<(A, T)>,
 ) {
@@ -231,11 +232,18 @@ pub fn tx_loop<T: AsRef<[u8]>, A: AsRef<[SocketAddr]>>(
 
                 write_eth_header(packet, &src_mac.0, &dest_mac.0);
 
+                const DEFAULT_TTL: u8 = 64;
+                let ttl = if dst_ip.is_multicast() {
+                    multicast_ttl
+                } else {
+                    DEFAULT_TTL
+                };
                 write_ip_header(
                     &mut packet[ETH_HEADER_SIZE..],
                     &src_ip,
                     &dst_ip,
                     (UDP_HEADER_SIZE + len) as u16,
+                    ttl,
                 );
 
                 write_udp_header(

@@ -28,11 +28,13 @@ pub struct XdpConfig {
     // The capacity of the channel that sits between retransmit stage and each XDP thread that
     // enqueues packets to the NIC.
     pub rtx_channel_cap: usize,
+    pub multicast_ttl: u8,
 }
 
 impl XdpConfig {
     // A nice round number
     const DEFAULT_RTX_CHANNEL_CAP: usize = 1_000_000;
+    const DEFAULT_MULTICAST_TTL: u8 = 64;
 }
 
 impl Default for XdpConfig {
@@ -42,6 +44,7 @@ impl Default for XdpConfig {
             cpus: vec![],
             zero_copy: false,
             rtx_channel_cap: Self::DEFAULT_RTX_CHANNEL_CAP,
+            multicast_ttl: Self::DEFAULT_MULTICAST_TTL,
         }
     }
 }
@@ -53,6 +56,7 @@ impl XdpConfig {
             cpus,
             zero_copy,
             rtx_channel_cap: XdpConfig::DEFAULT_RTX_CHANNEL_CAP,
+            multicast_ttl: XdpConfig::DEFAULT_MULTICAST_TTL,
         }
     }
 }
@@ -202,6 +206,7 @@ impl XdpRetransmitter {
                             src_ip,
                             src_port,
                             None,
+                            config.multicast_ttl,
                             receiver,
                             drop_sender,
                         )

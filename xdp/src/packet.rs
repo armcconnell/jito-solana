@@ -12,7 +12,13 @@ pub fn write_eth_header(packet: &mut [u8], src_mac: &[u8; 6], dst_mac: &[u8; 6])
     packet[12..14].copy_from_slice(&(ETH_P_IP as u16).to_be_bytes());
 }
 
-pub fn write_ip_header(packet: &mut [u8], src_ip: &Ipv4Addr, dst_ip: &Ipv4Addr, udp_len: u16) {
+pub fn write_ip_header(
+    packet: &mut [u8],
+    src_ip: &Ipv4Addr,
+    dst_ip: &Ipv4Addr,
+    udp_len: u16,
+    ttl: u8,
+) {
     let total_len = IP_HEADER_SIZE + udp_len as usize;
 
     // version (4) and IHL (5)
@@ -25,7 +31,7 @@ pub fn write_ip_header(packet: &mut [u8], src_ip: &Ipv4Addr, dst_ip: &Ipv4Addr, 
     // flags & frag offset
     packet[6..8].copy_from_slice(&0u16.to_be_bytes());
     // TTL
-    packet[8] = 64;
+    packet[8] = ttl;
     // protocol (UDP = 17)
     packet[9] = 17;
     // checksum
