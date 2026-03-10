@@ -551,6 +551,31 @@ pub fn execute(
             )
         })?,
     ));
+
+    // Check for multicast static route and require matching shred receiver address
+    {
+        let has_route = SystemMonitorService::check_multicast_route();
+        if has_route {
+            let shred_addrs = shred_receiver_addresses.load();
+            let required_addr: SocketAddr = "233.84.178.1:7733".parse().unwrap();
+            if !shred_addrs.iter().any(|addr| *addr == required_addr) {
+                Err("Static route for 233.84.178.1/32 detected but \
+                     --shred-receiver-address does not include 233.84.178.1:7733. \
+                     Pass --shred-receiver-address 233.84.178.1:7733 to send shreds \
+                     to the multicast group."
+                    .to_string())?;
+            }
+            info!("Multicast route check passed.");
+        } else {
+            Err("Required static route for 233.84.178.1/32 not found in routing table. \
+                 To send to DoubleZero, see \
+                 https://docs.malbeclabs.com/Validator%20Multicast%20Connection/ \
+                 or to mock for development, use: \
+                 ip route add blackhole 233.84.178.1/32"
+                .to_string())?;
+        }
+    }
+
     let shred_retransmit_receiver_addresses = Arc::new(ArcSwap::from_pointee(
         parse_shred_receiver_addresses(
             matches

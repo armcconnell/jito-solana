@@ -490,6 +490,53 @@ impl SystemMonitorService {
     }
 
     #[cfg(target_os = "linux")]
+    pub fn check_multicast_route() -> bool {
+        // 233.84.178.1 in little-endian hex as it appears in /proc/net/route
+        const MULTICAST_DEST: &str = "01B254E9";
+        const HOST_MASK: &str = "FFFFFFFF";
+
+        match File::open("/proc/net/route") {
+            Ok(file) => {
+                let reader = BufReader::new(file);
+                for line in reader.lines().map_while(Result::ok).skip(1) {
+                    let fields: Vec<&str> = line.split('\t').collect();
+                    if fields.len() >= 8 {
+                        let dest = fields[1].trim();
+                        let mask = fields[7].trim();
+                        if dest.eq_ignore_ascii_case(MULTICAST_DEST)
+                            && mask.eq_ignore_ascii_case(HOST_MASK)
+                        {
+                            let iface = fields[0].trim();
+                            if iface == "*" {
+                                warn!(
+                                    "Found blackhole route for 233.84.178.1/32, \
+                                     not a static route to a real interface"
+                                );
+                            } else {
+                                info!(
+                                    "Found multicast route for 233.84.178.1/32 on interface {iface}"
+                                );
+                            }
+                            return true;
+                        }
+                    }
+                }
+                info!("No multicast route found for 233.84.178.1/32");
+                false
+            }
+            Err(err) => {
+                warn!("Failed to read /proc/net/route: {err}");
+                false
+            }
+        }
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    pub fn check_multicast_route() -> bool {
+        true
+    }
+
+    #[cfg(target_os = "linux")]
     fn process_net_stats(net_stats: &mut Option<NetStats>) {
         match read_net_stats() {
             Ok(new_stats) => {
